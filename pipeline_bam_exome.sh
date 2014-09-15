@@ -2,6 +2,9 @@
 #$ -V
 #$ -S /bin/bash
 
+# BAM finishing script for exome sample
+# runs on 8vCore, 16GB RAM machine
+
 source ./pipeline.cfg
 
 # arguments

@@ -2,6 +2,9 @@
 #$ -V
 #$ -S /bin/bash
 
+# Somatic variant call script for Tumor exsome sample
+# runs on 8vCore, 16GB RAM machine
+
 source ./pipeline.cfg
 
 # arguments
