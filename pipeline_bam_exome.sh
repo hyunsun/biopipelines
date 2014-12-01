@@ -120,12 +120,6 @@ echo "java -Xmx15g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} 
 wait
 LOG "#9 DepthOfCoverage done."
 
-# 10 upload to g-Storage
-java -jar /SNUH/app/gtp.jar -u genomecloudsnu@gmail.com -p gcsnu1234! -s storage -enc off -q -m udp -mput ${gstorage}/fastqc ${fastqc}${sample_id}"_1_fastqc.zip" ${fastqc}${sample_id}"_2_fastqc.zip"
-java -jar /SNUH/app/gtp.jar -u genomecloudsnu@gmail.com -p gcsnu1234! -s storage -enc off -q -m udp -mput ${gstorage}/bam ${output}.recal.bam ${output}.recal.bai
-java -jar /SNUH/app/gtp.jar -u genomecloudsnu@gmail.com -p gcsnu1234! -s storage -enc off -q -m udp -mput ${gstorage}/stat ${stat}.cov.out.sample_summary ${stat}.cov.out.sample_statistics ${stat}.stat.insertsizematrix ${stat}.stat.hist.pdf
-LOG "#10 Stat gtp upload done."
-
 LOG "Done sample ${sample_id}, total elasped time: $((${time_now} - ${time_start})) sec."
 
 # cleanup
