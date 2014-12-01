@@ -2,21 +2,18 @@
 #$ -V
 #$ -S /bin/bash
 
-# BAM finishing script for exome sample
-# runs on 8vCore, 16GB RAM machine
-
 source ./pipeline.cfg
 
 # arguments
-category=$1
-file_name=$2
-sample_id=$3
+file_name=$1
+sample_id=$2
+gstorage=$3
 
 # log function
 time_start=$(date +%s)
 time_now=${time_start}
 time_end=${time_start}
-LOG_FILE="./logs/${sample_id}.log"
+LOG_FILE="${work_dir}/logs/${sample_id}-${time_start}.log"
 LOG() {
   time_now=$(date +%s)
   echo "[${sample_id}][$(date "+%F %T")][time: $((${time_now} - ${time_end})) sec] $*" >> ${LOG_FILE}
@@ -49,11 +46,11 @@ check_line_size_bam() {
 }
 
 # variables
-fastq_r1="${work_dir}fastq/disk5/${file_name}_1.fastq"
-fastq_r2="${work_dir}fastq/disk5/${file_name}_2.fastq"
-output="${work_dir}results/${category}/bam/${sample_id}"
-stat="${work_dir}results/${category}/stat/${sample_id}"
-fastqc="${work_dir}results/${category}/fastqc/"
+fastq_r1="${work_dir}/fastq/${file_name}_1.fastq.gz"
+fastq_r2="${work_dir}/fastq/${file_name}_2.fastq.gz"
+output="${work_dir}/results/bam/${sample_id}"
+stat="${work_dir}/results/stat/${sample_id}"
+fastqc="${work_dir}/results/fastqc/"
 
 LOG "Start processing sample ${sample_id}..."
 
@@ -74,56 +71,60 @@ LOG "#1 BWA done."
 
 # 2
 echo "#2"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}AddOrReplaceReadGroups.jar INPUT=${output}.sam OUTPUT=${output}.sorted.bam SORT_ORDER=coordinate RGID=${output} RGLB=${output} RGPL=illumina RGPU=SureSelectAllExon RGSM=${output} VALIDATION_STRINGENCY=LENIENT"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}AddOrReplaceReadGroups.jar INPUT=${output}.sam OUTPUT=${output}.sorted.bam SORT_ORDER=coordinate RGID=${sample_id} RGLB=${sample_id} RGPL=illumina RGPU=SureSelectAllExon RGSM=${sample_id} VALIDATION_STRINGENCY=LENIENT
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}AddOrReplaceReadGroups.jar INPUT=${output}.sam OUTPUT=${output}.sorted.bam SORT_ORDER=coordinate RGID=${output} RGLB=${output} RGPL=illumina RGPU=SureSelectAllExon RGSM=${output} VALIDATION_STRINGENCY=LENIENT"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}AddOrReplaceReadGroups.jar INPUT=${output}.sam OUTPUT=${output}.sorted.bam SORT_ORDER=coordinate RGID=${sample_id} RGLB=${sample_id} RGPL=illumina RGPU=SureSelectAllExon RGSM=${sample_id} VALIDATION_STRINGENCY=LENIENT
 LOG "#2 AddOrReplaceReadGroups done."
 #check_line_size_bam ${fastq_r1} ${output}.sorted.bam
 
 # 3
 echo "#3"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}MarkDuplicates.jar INPUT=${output}.sorted.bam OUTPUT=${output}.sorted.dp.bam METRICS_FILE=${output}.sorted.dp.metrix ASSUME_SORTED=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT CREATE_INDEX=true"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}MarkDuplicates.jar INPUT=${output}.sorted.bam OUTPUT=${output}.sorted.dp.bam METRICS_FILE=${output}.sorted.dp.metrix ASSUME_SORTED=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT CREATE_INDEX=true
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}MarkDuplicates.jar INPUT=${output}.sorted.bam OUTPUT=${output}.sorted.dp.bam METRICS_FILE=${output}.sorted.dp.metrix ASSUME_SORTED=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT CREATE_INDEX=true"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}MarkDuplicates.jar INPUT=${output}.sorted.bam OUTPUT=${output}.sorted.dp.bam METRICS_FILE=${output}.sorted.dp.metrix ASSUME_SORTED=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=LENIENT CREATE_INDEX=true
 LOG "#3 MarkDuplicates done."
   
 # 4 Stat
 echo "#4"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T FlagStat -R ${ref} -L ${bait} -I ${output}.sorted.dp.bam -o ${stat}.stat"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T FlagStat -R ${ref} -L ${bait} -I ${output}.sorted.dp.bam -o ${stat}.stat
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T FlagStat -R ${ref} -L ${bait} -I ${output}.sorted.dp.bam -o ${stat}.stat"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T FlagStat -R ${ref} -L ${bait} -I ${output}.sorted.dp.bam -o ${stat}.stat
 LOG "#4 FlagStat done."
 
 # 5
 echo "#5"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T RealignerTargetCreator -nt 8 -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.intervals -known ${mills} -known ${KG}"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T RealignerTargetCreator -nt 8 -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.intervals -known ${mills} -known ${KG}
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T RealignerTargetCreator -nt 8 -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.intervals -known ${mills} -known ${KG}"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T RealignerTargetCreator -nt 8 -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.intervals -known ${mills} -known ${KG}
 LOG "#5 RealignerTargetCreator done."
 
 # 6
 echo "#6"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T IndelRealigner -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.sorted.dp.ir.bam -targetIntervals ${output}.intervals  -known ${mills} -known ${KG}"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T IndelRealigner -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.sorted.dp.ir.bam -targetIntervals ${output}.intervals  -known ${mills} -known ${KG}
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T IndelRealigner -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.sorted.dp.ir.bam -targetIntervals ${output}.intervals  -known ${mills} -known ${KG}"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T IndelRealigner -R ${ref} -I ${output}.sorted.dp.bam -o ${output}.sorted.dp.ir.bam -targetIntervals ${output}.intervals  -known ${mills} -known ${KG}
 LOG "#6 IndelRealigner done."
 
 # 7
 echo "#7"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T BaseRecalibrator -nct 8 -I ${output}.sorted.dp.ir.bam -R ${ref} -knownSites ${dbsnp} -knownSites ${mills} -knownSites ${KG} -o ${output}.sorted.dp.ir.grp"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T BaseRecalibrator -nct 8 -I ${output}.sorted.dp.ir.bam -R ${ref} -knownSites ${dbsnp} -knownSites ${mills} -knownSites ${KG} -o ${output}.sorted.dp.ir.grp
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T BaseRecalibrator -nct 8 -I ${output}.sorted.dp.ir.bam -R ${ref} -knownSites ${dbsnp} -knownSites ${mills} -knownSites ${KG} -o ${output}.sorted.dp.ir.grp"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T BaseRecalibrator -nct 8 -I ${output}.sorted.dp.ir.bam -R ${ref} -knownSites ${dbsnp} -knownSites ${mills} -knownSites ${KG} -o ${output}.sorted.dp.ir.grp
 LOG "#7 BaseRecalibrator done."
 
 # 8
 echo "#8"
-echo "java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T PrintReads -nct 8 -R ${ref} -I ${output}.sorted.dp.ir.bam -BQSR ${output}.sorted.dp.ir.grp -o ${output}.recal.bam"
-java -Xmx16g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T PrintReads -nct 8 -R ${ref} -I ${output}.sorted.dp.ir.bam -BQSR ${output}.sorted.dp.ir.grp -o ${output}.recal.bam
+echo "java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T PrintReads -nct 8 -R ${ref} -I ${output}.sorted.dp.ir.bam -BQSR ${output}.sorted.dp.ir.grp -o ${output}.recal.bam"
+java -Xmx30g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T PrintReads -nct 8 -R ${ref} -I ${output}.sorted.dp.ir.bam -BQSR ${output}.sorted.dp.ir.grp -o ${output}.recal.bam
 LOG "#8 PrintReads done."
 
 # 9 Stat
 echo "#9"
-echo "java -Xmx8g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T DepthOfCoverage -R ${ref} -I ${output}.recal.bam -L ${bait} -omitBaseOutput -omitLocusTable -omitIntervals -o ${stat}.cov.out --minMappingQuality 20 --minBaseQuality 20 --logging_level ERROR --summaryCoverageThreshold 8 --summaryCoverageThreshold 15 --summaryCoverageThreshold 30 --summaryCoverageThreshold 50"
-(java -Xmx8g -XX:ParallelGCThreads=4 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}CollectInsertSizeMetrics.jar VALIDATION_STRINGENCY=LENIENT INPUT=${output}.recal.bam OUTPUT=${stat}.stat.insertsizematrix HISTOGRAM_FILE=${stat}.stat.hist.pdf)&
-(java -Xmx8g -XX:ParallelGCThreads=4 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T DepthOfCoverage -R ${ref} -I ${output}.recal.bam -L ${bait} -omitBaseOutput -omitLocusTable -omitIntervals -o ${stat}.cov.out --minMappingQuality 20 --minBaseQuality 20 --logging_level ERROR --summaryCoverageThreshold 8 --summaryCoverageThreshold 15 --summaryCoverageThreshold 30 --summaryCoverageThreshold 50)&
+echo "java -Xmx15g -XX:ParallelGCThreads=8 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T DepthOfCoverage -R ${ref} -I ${output}.recal.bam -L ${bait} -omitBaseOutput -omitLocusTable -omitIntervals -o ${stat}.cov.out --minMappingQuality 20 --minBaseQuality 20 --logging_level ERROR --summaryCoverageThreshold 8 --summaryCoverageThreshold 15 --summaryCoverageThreshold 30 --summaryCoverageThreshold 50"
+(java -Xmx15g -XX:ParallelGCThreads=4 -Djava.io.tmpdir=${tmp} -jar ${picard_folder}CollectInsertSizeMetrics.jar VALIDATION_STRINGENCY=LENIENT INPUT=${output}.recal.bam OUTPUT=${stat}.stat.insertsizematrix HISTOGRAM_FILE=${stat}.stat.hist.pdf)&
+(java -Xmx15g -XX:ParallelGCThreads=4 -Djava.io.tmpdir=${tmp} -jar ${gatk} -T DepthOfCoverage -R ${ref} -I ${output}.recal.bam -L ${bait} -omitBaseOutput -omitLocusTable -omitIntervals -o ${stat}.cov.out --minMappingQuality 20 --minBaseQuality 20 --logging_level ERROR --summaryCoverageThreshold 8 --summaryCoverageThreshold 15 --summaryCoverageThreshold 30 --summaryCoverageThreshold 50)&
 wait
 LOG "#9 DepthOfCoverage done."
 
 # 10 upload to g-Storage
+java -jar /SNUH/app/gtp.jar -u genomecloudsnu@gmail.com -p gcsnu1234! -s storage -enc off -q -m udp -mput ${gstorage}/fastqc ${fastqc}${sample_id}"_1_fastqc.zip" ${fastqc}${sample_id}"_2_fastqc.zip"
+java -jar /SNUH/app/gtp.jar -u genomecloudsnu@gmail.com -p gcsnu1234! -s storage -enc off -q -m udp -mput ${gstorage}/bam ${output}.recal.bam ${output}.recal.bai
+java -jar /SNUH/app/gtp.jar -u genomecloudsnu@gmail.com -p gcsnu1234! -s storage -enc off -q -m udp -mput ${gstorage}/stat ${stat}.cov.out.sample_summary ${stat}.cov.out.sample_statistics ${stat}.stat.insertsizematrix ${stat}.stat.hist.pdf
+LOG "#10 Stat gtp upload done."
 
 LOG "Done sample ${sample_id}, total elasped time: $((${time_now} - ${time_start})) sec."
 
